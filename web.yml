@@ -1,0 +1,51 @@
+- hosts: web 
+  vars_prompt:
+     - name: "directory"
+       prompt: "\ngive directory name in which you want to mount the directory"
+       private: no
+     - name: "dvd_name"
+       prompt: "\nwhat is your dvd name"
+       private: no
+     - name: "port"
+       prompt: "\non which port do you wnat to run the service"  
+       private: no
+     - name: "webpage"
+       prompt: "\nwhat is your webpage name"  
+       private: no  
+     - name: "path_of_webpage"
+       prompt: "\nEnter your webpage path"  
+       private: no
+  tasks:
+  - file:
+        path: "/{{ directory }}"
+        state: directory
+  - mount:
+         path: "/{{ directory }}"
+         src: "{{ dvd_name }}"
+         fstype: iso9660
+         state: mounted
+  - name: Add Appstream repository
+    yum_repository:
+         name: "dvd1"
+         description: "dvd1 repo"
+         baseurl: "file:///{{ directory }}/AppStream"
+         gpgcheck: no
+  - name: Add BasOS repository
+    yum_repository:
+         name: "dvd2"
+         description: "dvd2 repo"
+         baseurl: "file:///{{ directory }}/BaseOS"
+         gpgcheck: no       
+  - package:
+        name: "httpd"
+        state: present
+  - copy: 
+        dest: "/var/www/html/{{ webpage }}"
+        src: "{{ path_of_webpage }}"    
+  - service: 
+        name: "httpd" 
+        state: "started"   
+  - firewalld:
+        port: "{{ port }}/tcp"
+        state: enabled
+        permanent: yes
