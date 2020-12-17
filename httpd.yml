@@ -1,0 +1,73 @@
+- hosts: 192.168.1.11 
+  vars_prompt:
+     - name: "directory"
+       prompt: "\ngive directory name in which you want to mount the directory"
+       private: no
+     - name: "dvd_name"
+       prompt: "\nwhat is your dvd name"
+       private: no
+     - name: "document_root"
+       prompt: "\nPath of document root "
+       private: no
+     - name: "page_name" 
+       prompt: "\ngive your webpage name" 
+       private: no
+     - name: "html_page"
+       prompt: "\npath of your html page"  
+       private: no
+  tasks:
+  - file:
+        path: "/{{ directory }}"
+        state: directory
+  - mount:
+         path: "/{{ directory }}"
+         src: "{{ dvd_name }}"
+         fstype: iso9660
+         state: mounted
+  - name: Add Appstream repository
+    yum_repository:
+         name: "dvd1"
+         description: "dvd1 repo"
+         baseurl: "file:///{{ directory }}/AppStream"
+         gpgcheck: no
+  - name: Add BasOS repository
+    yum_repository:
+         name: "dvd2"
+         description: "dvd2 repo"
+         baseurl: "file:///{{ directory }}/BaseOS"
+         gpgcheck: no       
+  - package:
+        name: "httpd"
+        state: present
+    register: x
+  - debug:
+        var: x
+    
+  - service:
+        name: "httpd"
+        state: started
+    when: x.rc != 0    
+  - file:
+        path: "{{ document_root }}"
+        state: directory      
+ 
+  - template: 
+        dest: "/etc/httpd/conf.d/" 
+        src: "lw.conf" 
+    notify : 
+    - startedhttpd
+  - copy:
+        dest: "{{ document_root }}/{{ page_name }}"
+        src: "{{ html_page }}"
+  - firewalld:
+        port: "8080/tcp"
+        state: enabled
+        permanent: yes
+        immediate: yes 
+
+  handlers:
+  - name: startedhttpd      
+    service:
+        name: "httpd"
+        state: restarted
+
